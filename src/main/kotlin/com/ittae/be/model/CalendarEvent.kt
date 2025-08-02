@@ -10,9 +10,8 @@ class CalendarEvent(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    val user: User,
+    @Column(name = "user_id")
+    var userId: Long = 0,
 
     var title: String,
 
@@ -24,11 +23,13 @@ class CalendarEvent(
 
     var duration: Int,
 
-    var category: String,
+    @Enumerated(EnumType.STRING)
+    var category: EventCategory,
 
     var staminaCost: Int = 0,
 
-    var status: String = "planned",
+    @Enumerated(EnumType.STRING)
+    var status: EventStatus = EventStatus.PLANNED,
 
     var staminaAfterCompletion: Int? = null,
 

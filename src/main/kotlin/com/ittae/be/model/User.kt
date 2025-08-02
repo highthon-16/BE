@@ -18,6 +18,9 @@ class User(
 
     var goals: String? = null,
 
+    @Enumerated(EnumType.STRING)
+    var aiStyle: AiStyle = AiStyle.ADULT_WOMAN,
+
     var currentStamina: Int = 100,
 
     val createdAt: LocalDateTime = LocalDateTime.now(),

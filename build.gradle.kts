@@ -35,7 +35,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")

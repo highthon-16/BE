@@ -1,0 +1,169 @@
+package com.ittae.be.service
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.ittae.be.client.*
+import com.ittae.be.dto.*
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import reactor.core.publisher.Mono
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
+
+@Service
+class ChatService(
+    private val geminiClient: GeminiClient,
+    private val mcpServerClient: McpServerClient,
+    private val objectMapper: ObjectMapper
+) {
+
+    private val logger = LoggerFactory.getLogger(ChatService::class.java)
+
+    fun processChat(request: ChatRequest, userId: Long): Mono<ChatResponse> {
+        val sessionId = request.sessionId ?: generateSessionId()
+        
+        return try {
+            val contextualPrompt = buildContextualPrompt(request.message, userId)
+            
+            geminiClient.generateContentWithCalendarTools(contextualPrompt)
+                .flatMap { geminiResponse ->
+                    handleGeminiResponse(geminiResponse, sessionId, userId)
+                }
+        } catch (e: Exception) {
+            logger.error("Error in processChat", e)
+            Mono.just(createErrorResponse(sessionId, "채팅 처리 중 오류가 발생했습니다."))
+        }
+    }
+
+    private fun buildContextualPrompt(userMessage: String, userId: Long): String {
+        return """
+            당신은 사용자의 캘린더를 관리하는 AI 어시스턴트입니다.
+            사용자 ID: $userId
+            현재 시간: ${LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}
+            
+            사용자 요청: $userMessage
+            
+            캘린더 이벤트 관련 작업을 수행할 때:
+            1. 시간은 ISO 8601 형식(YYYY-MM-DDTHH:mm:ss)으로 처리합니다
+            2. 카테고리는 STUDY, WORK, REST, ACTIVITY 중 하나를 사용합니다
+            3. 지속 시간은 분 단위로 지정합니다
+            4. 사용자의 요청을 정확히 파악하여 적절한 함수를 호출합니다
+            
+            사용자의 요청을 분석하고 필요한 경우 캘린더 함수를 호출하여 작업을 수행하세요.
+            작업 결과는 친근하고 명확한 한국어로 응답해주세요.
+        """.trimIndent()
+    }
+
+    private fun handleGeminiResponse(
+        geminiResponse: GeminiResponse, 
+        sessionId: String, 
+        userId: Long
+    ): Mono<ChatResponse> {
+        
+        if (geminiResponse.error != null) {
+            logger.error("Gemini API error: ${geminiResponse.error}")
+            return Mono.just(createErrorResponse(sessionId, "AI 처리 중 오류가 발생했습니다: ${geminiResponse.error.message}"))
+        }
+        
+        if (geminiResponse.candidates.isNullOrEmpty()) {
+            return Mono.just(createErrorResponse(sessionId, "AI 응답을 생성할 수 없습니다."))
+        }
+        
+        val candidate = geminiResponse.candidates.first()
+        val content = candidate.content
+        
+        if (content?.parts?.any { it.functionCall != null } == true) {
+            val functionCall = content.parts.first { it.functionCall != null }.functionCall!!
+            return handleMcpFunction(functionCall, sessionId, userId)
+        } else {
+            val responseText = content?.parts?.firstOrNull()?.text ?: "응답을 생성할 수 없습니다."
+            return Mono.just(createTextResponse(sessionId, responseText))
+        }
+    }
+
+    private fun handleMcpFunction(
+        functionCall: FunctionCall, 
+        sessionId: String, 
+        userId: Long
+    ): Mono<ChatResponse> {
+        
+        logger.info("Executing MCP function: ${functionCall.name} with args: ${functionCall.args}")
+        
+        return mcpServerClient.callMcpFunction(functionCall.name, functionCall.args)
+            .flatMap { mcpResponse ->
+                processMcpResponse(mcpResponse, functionCall, sessionId)
+            }
+    }
+    
+    private fun processMcpResponse(
+        mcpResponse: McpResponse,
+        functionCall: FunctionCall,
+        sessionId: String
+    ): Mono<ChatResponse> {
+        if (mcpResponse.error != null) {
+            logger.error("MCP function error: ${mcpResponse.error}")
+            return Mono.just(createErrorResponse(sessionId, "캘린더 작업 중 오류가 발생했습니다: ${mcpResponse.error.message}"))
+        }
+        
+        val actionInfo = ActionInfo(
+            actionType = functionCall.name.uppercase(),
+            result = mcpResponse.result,
+            success = true
+        )
+        
+        val responseMessage = generateSuccessMessage(functionCall.name, mcpResponse.result)
+        
+        val response = ChatResponse(
+            message = responseMessage,
+            sessionId = sessionId,
+            actionPerformed = actionInfo,
+            timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        )
+        
+        return Mono.just(response)
+    }
+
+    private fun generateSuccessMessage(functionName: String, result: Any?): String {
+        return when (functionName) {
+            "create_calendar_event" -> "새로운 일정이 성공적으로 생성되었습니다! ✅"
+            "update_calendar_event" -> "일정이 성공적으로 수정되었습니다! ✏️"
+            "delete_calendar_event" -> "일정이 성공적으로 삭제되었습니다! 🗑️"
+            "get_all_events" -> {
+                val events = if (result is List<*>) result else emptyList()
+                "현재 등록된 일정이 ${events.size}개 있습니다. 📅"
+            }
+            "get_events_by_date" -> {
+                val events = if (result is List<*>) result else emptyList()
+                "해당 날짜에 ${events.size}개의 일정이 있습니다. 📅"
+            }
+            "complete_event" -> "일정이 완료로 표시되었습니다! 🎉"
+            else -> "작업이 성공적으로 완료되었습니다!"
+        }
+    }
+
+    private fun createTextResponse(sessionId: String, text: String): ChatResponse {
+        return ChatResponse(
+            message = text,
+            sessionId = sessionId,
+            actionPerformed = null,
+            timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        )
+    }
+
+    private fun createErrorResponse(sessionId: String, errorMessage: String): ChatResponse {
+        return ChatResponse(
+            message = errorMessage,
+            sessionId = sessionId,
+            actionPerformed = ActionInfo(
+                actionType = "ERROR",
+                result = null,
+                success = false
+            ),
+            timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        )
+    }
+
+    private fun generateSessionId(): String {
+        return "chat-${UUID.randomUUID().toString().substring(0, 8)}"
+    }
+}
