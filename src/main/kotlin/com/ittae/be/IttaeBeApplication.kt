@@ -14,6 +14,8 @@ fun main(args: Array<String>) {
     System.setProperty("DB_PASSWORD", dotenv["DB_PASSWORD"])
     System.setProperty("JWT_SECRET", dotenv["JWT_SECRET"])
     System.setProperty("JWT_EXPIRATION", dotenv["JWT_EXPIRATION"])
+    System.setProperty("GEMINI_API_KEY", dotenv["GEMINI_API_KEY"])
+    System.setProperty("MCP_SERVER_URL", dotenv["MCP_SERVER_URL"])
 
     runApplication<IttaeBeApplication>(*args)
 }
