@@ -8,7 +8,7 @@ COPY src src
 
 RUN gradle build --no-daemon -x test
 
-FROM openjdk:21-jre
+FROM openjdk:21-jdk-slim
 
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
