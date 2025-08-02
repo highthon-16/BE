@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono
 @Component
 class McpServerClient(
     private val webClient: WebClient,
-    @Value("\${mcp.server.url:http://localhost:8080}") private val mcpServerUrl: String
+    @Value("\${mcp.server.url:https://mcp.ittae.kro.kr}") private val mcpServerUrl: String
 ) {
 
     fun callMcpFunction(functionName: String, args: Map<String, Any>): Mono<McpResponse> {
@@ -23,6 +23,25 @@ class McpServerClient(
 
         return webClient.post()
             .uri("$mcpServerUrl/mcp")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(McpResponse::class.java)
+            .doOnError { error ->
+                println("MCP 서버 호출 오류: ${error.message}")
+            }
+    }
+
+    fun listTools(): Mono<McpResponse> {
+        val request = McpRequest(
+            method = "tools/list",
+            params = McpParams(
+                name = "",
+                arguments = emptyMap()
+            )
+        )
+
+        return webClient.post()
+            .uri("$mcpServerUrl/tools/list")
             .bodyValue(request)
             .retrieve()
             .bodyToMono(McpResponse::class.java)

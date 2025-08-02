@@ -5,33 +5,33 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(name = "calendar_events")
-class CalendarEvent(
+data class CalendarEvent(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
     @Column(name = "user_id")
-    var userId: Long = 0,
+    val userId: Long = 0,
 
-    var title: String,
+    val title: String,
 
-    var description: String? = null,
+    val description: String? = null,
 
-    var location: String? = null,
+    val location: String? = null,
 
-    var startTime: LocalDateTime,
+    val startTime: String,
 
-    var duration: Int,
-
-    @Enumerated(EnumType.STRING)
-    var category: EventCategory,
-
-    var staminaCost: Int = 0,
+    val duration: Int,
 
     @Enumerated(EnumType.STRING)
-    var status: EventStatus = EventStatus.PLANNED,
+    val category: EventCategory,
 
-    var staminaAfterCompletion: Int? = null,
+    val staminaCost: Int? = null,
+
+    @Enumerated(EnumType.STRING)
+    val status: EventStatus = EventStatus.PLANNED,
+
+    val staminaAfterCompletion: Int? = null,
 
     val createdAt: LocalDateTime = LocalDateTime.now()
 )

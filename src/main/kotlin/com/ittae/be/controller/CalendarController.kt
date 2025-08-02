@@ -14,8 +14,8 @@ import reactor.core.publisher.Mono
 class CalendarController(private val calendarService: CalendarService) {
 
     @GetMapping("/events")
-    fun getEvents(@AuthenticationPrincipal userDetails: UserDetailsImpl): Flux<CalendarEventResponse> {
-        return calendarService.getEventsByUserId(userDetails.getUserId()!!)
+    fun getEvents(@AuthenticationPrincipal userDetails: UserDetailsImpl): Mono<List<CalendarEventResponse>> {
+        return calendarService.getAllEvents(userDetails.getUserId()!!)
     }
 
     @PostMapping("/events")
@@ -23,7 +23,7 @@ class CalendarController(private val calendarService: CalendarService) {
         @Valid @RequestBody request: CalendarEventRequest,
         @AuthenticationPrincipal userDetails: UserDetailsImpl
     ): Mono<CalendarEventResponse> {
-        return calendarService.addEvent(request, userDetails.getUserId()!!)
+        return calendarService.createEvent(request, userDetails.getUserId()!!)
     }
 
     @PutMapping("/events/{eventId}")

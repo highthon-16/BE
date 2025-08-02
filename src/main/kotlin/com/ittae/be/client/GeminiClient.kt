@@ -25,11 +25,22 @@ class GeminiClient(
         )
 
         return webClient.post()
-            .uri("/v1beta/models/gemini-1.5-pro:generateContent?key={apiKey}", apiKey)
+            .uri("/v1beta/models/gemini-2.5-flash:generateContent")
             .header("Content-Type", "application/json")
+            .header("X-goog-api-key", apiKey)
             .bodyValue(request)
             .retrieve()
             .bodyToMono(GeminiResponse::class.java)
+            .retryWhen(
+                reactor.util.retry.Retry.backoff(3, java.time.Duration.ofSeconds(2))
+                    .filter { it is org.springframework.web.reactive.function.client.WebClientResponseException.TooManyRequests }
+            )
+            .onErrorReturn(
+                GeminiResponse(
+                    candidates = null,
+                    error = ErrorInfo(429, "API 요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.", "RESOURCE_EXHAUSTED")
+                )
+            )
     }
 
     fun generateContentWithCalendarTools(prompt: String): Mono<GeminiResponse> {

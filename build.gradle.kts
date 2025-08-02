@@ -33,6 +33,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+    
+    // Netty DNS resolver for macOS (네이티브 DNS 해결)
+    implementation("io.netty:netty-resolver-dns-native-macos:4.1.123.Final:osx-x86_64")
+    implementation("io.netty:netty-resolver-dns-native-macos:4.1.123.Final:osx-aarch_64")
+    
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
