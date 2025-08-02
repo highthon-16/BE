@@ -16,6 +16,5 @@ COPY --from=build /app/build/libs/*.jar app.jar
 EXPOSE 8080
 
 ENV JAVA_OPTS=""
-ENV SPRING_PROFILES_ACTIVE=docker
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
